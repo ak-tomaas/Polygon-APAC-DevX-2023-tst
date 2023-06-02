@@ -1,0 +1,28 @@
+{
+  "name": "ethseoul-2023-tst",
+  "version": "0.1.0",
+  "description": "tomaas staking",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ak-tomaas/ethseoul-2023-tst.git"
+  },
+  "author": "tommas",
+  "bugs": {
+    "url": "https://github.com/ak-tomaas/ethseoul-2023-tst/issues"
+  },
+  "homepage": "https://github.com/ak-tomaas/ethseoul-2023-tst#readme",
+  "devDependencies": {
+    "@bundlr-network/client": "^0.11.2",
+    "@nomicfoundation/hardhat-toolbox": "^2.0.2",
+    "@openzeppelin/hardhat-upgrades": "^1.27.0",
+    "hardhat": "^2.14.1",
+    "hardhat-contract-sizer": "^2.9.0"
+  },
+  "dependencies": {
+    "@openzeppelin/contracts-upgradeable": "^4.9.0"
+  }
+}
