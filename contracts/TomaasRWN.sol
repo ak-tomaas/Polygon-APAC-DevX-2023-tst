@@ -1,15 +1,14 @@
 // SPDX-License-Identifier: BSL-1.0
 pragma solidity ^0.8.17;
 
-import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
-import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/token/ERC721/ERC721Upgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/token/ERC721/extensions/ERC721URIStorageUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/utils/CountersUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/utils/structs/EnumerableSetUpgradeable.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
+import "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol";
+import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+import "@openzeppelin/contracts/security/Pausable.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/utils/Counters.sol";
+import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 
 import "./IERC4907.sol";
 
@@ -25,17 +24,16 @@ import "hardhat/console.sol";
  * @custom:security-contact security@tomaas.ai
  */
 contract TomaasRWN is
-    Initializable, 
-    ERC721Upgradeable, 
-    ERC721URIStorageUpgradeable, 
-    PausableUpgradeable, 
-    OwnableUpgradeable,
-    ReentrancyGuardUpgradeable,
+    ERC721, 
+    ERC721URIStorage, 
+    Pausable, 
+    Ownable,
+    ReentrancyGuard,
     IERC4907
 {
-    using CountersUpgradeable for CountersUpgradeable.Counter;
+    using Counters for Counters.Counter;
 
-    CountersUpgradeable.Counter private _tokenIdCounter;
+    Counters.Counter private _tokenIdCounter;
 
     struct UserInfo {
         address user; // address of user role
@@ -51,7 +49,7 @@ contract TomaasRWN is
 
     mapping(uint256 => UserInfo) internal _users;
 
-    IERC20Upgradeable private _acceptedToken;
+    IERC20 private _acceptedToken;
 
     uint256 _feeRate;
 
@@ -62,7 +60,7 @@ contract TomaasRWN is
     uint256 internal _totalDistributedEarnings;
 
     //Renter address => token id list
-    mapping(address => EnumerableSetUpgradeable.UintSet) private _rentedList; 
+    mapping(address => EnumerableSet.UintSet) private _rentedList; 
 
     event NewTRN(string name, address acceptedToken, uint256 svcStartDate, uint64 usefulLife, uint256 price);
     event UpdateUsers(address indexed user, uint64 expires, uint256[] tokenIds);
@@ -76,23 +74,13 @@ contract TomaasRWN is
     event ClaimEarningsMultiple(address indexed owner, uint256[] tokenIds, uint256 amount);
 
     /// @custom:oz-upgrades-unsafe-allow constructor
-    constructor() {
-        _disableInitializers();
-    }
-
-    function initialize(string memory _name, address acceptedToken, uint256 svcStartDate, uint64 usefulLife, uint256 price
-    ) initializer public {
+    constructor(string memory _name, address acceptedToken, uint256 svcStartDate, uint64 usefulLife, uint256 price
+    )  ERC721(_name, "TRN") {
         _feeRate = 100; // 1% fee, 100% = 10000
-        _acceptedToken = IERC20Upgradeable(acceptedToken);
+        _acceptedToken = IERC20(acceptedToken);
         _assetInfo.svcStartDate = svcStartDate;
         _assetInfo.usefulLife = usefulLife;
         _assetInfo.price = price;
-
-        __ERC721_init(_name, "TRN");
-        __ERC721URIStorage_init();
-        __Pausable_init();
-        __Ownable_init();
-        __ReentrancyGuard_init();
 
         emit NewTRN(_name, acceptedToken, svcStartDate, usefulLife, price);
     }
@@ -144,7 +132,7 @@ contract TomaasRWN is
             _setTokenURI(tokenId, uri);
             _users[tokenId] = UserInfo(user, expires);
 
-            EnumerableSetUpgradeable.add(_rentedList[user], tokenId);
+            EnumerableSet.add(_rentedList[user], tokenId);
             tokenIds[i] = tokenId;
         }
         emit UpdateUsers(user, expires, tokenIds);
@@ -154,7 +142,7 @@ contract TomaasRWN is
     //     require(to != address(0), "TRN: approve to the zero address");
     //     require(tokenIds.length > 0, "TRN: approve tokenIds length is zero");
 
-    //     address owner = ERC721Upgradeable.ownerOf(tokenIds[0]);
+    //     address owner = ERC721.ownerOf(tokenIds[0]);
     //     require(
     //         _msgSender() == owner || isApprovedForAll(owner, _msgSender()),
     //         "TRN: approve caller is not token owner or approved for all"
@@ -162,7 +150,7 @@ contract TomaasRWN is
 
     //     for (uint256 i=0; i<tokenIds.length; i++) {
     //         uint256 tokenId = tokenIds[i];
-    //         owner = ERC721Upgradeable.ownerOf(tokenId);
+    //         owner = ERC721.ownerOf(tokenId);
     //         require(to != owner, "TRN: approval to current owner");
     //         _approve(to, tokenId);
     //     }
@@ -176,7 +164,7 @@ contract TomaasRWN is
         address to,
         uint256 tokenId,
         uint256 batchSize
-    ) internal override(ERC721Upgradeable) whenNotPaused {
+    ) internal override(ERC721) whenNotPaused {
         super._beforeTokenTransfer(from, to, tokenId, batchSize);
 
         // keep user after transfer
@@ -188,13 +176,13 @@ contract TomaasRWN is
 
     function _burn(
         uint256 tokenId
-    ) internal override(ERC721Upgradeable, ERC721URIStorageUpgradeable) {
+    ) internal override(ERC721, ERC721URIStorage) {
         super._burn(tokenId);
     }
 
     function tokenURI(
         uint256 tokenId
-    ) public view override(ERC721Upgradeable, ERC721URIStorageUpgradeable) returns (string memory) {
+    ) public view override(ERC721, ERC721URIStorage) returns (string memory) {
         require(_exists(tokenId), "RWN: tokenDoesNotExi");
         return super.tokenURI(tokenId);
     }
@@ -202,7 +190,7 @@ contract TomaasRWN is
     /// @dev See {IERC165-supportsInterface}.
     function supportsInterface(
         bytes4 interfaceId
-    ) public view virtual override(ERC721Upgradeable, ERC721URIStorageUpgradeable) returns (bool) {
+    ) public view virtual override(ERC721, ERC721URIStorage) returns (bool) {
         return
             interfaceId == type(IERC4907).interfaceId ||
             super.supportsInterface(interfaceId);
@@ -234,7 +222,7 @@ contract TomaasRWN is
 
         address prevUser = _userOf(tokenId);
         if (prevUser != address(0)) {
-            EnumerableSetUpgradeable.remove(_rentedList[prevUser], tokenId);
+            EnumerableSet.remove(_rentedList[prevUser], tokenId);
         }
 
         UserInfo storage info =  _users[tokenId];
@@ -242,7 +230,7 @@ contract TomaasRWN is
         info.expires = expires;
 
         // console.log("setUser: tokenId: %s, user: %s, expires: %s", tokenId, user, expires);
-        EnumerableSetUpgradeable.add(_rentedList[user], tokenId);
+        EnumerableSet.add(_rentedList[user], tokenId);
         emit UpdateUser(tokenId, user, expires);
     }
 
@@ -257,13 +245,13 @@ contract TomaasRWN is
 
             address prevUser = _userOf(tokenIds[i]);
             if (prevUser != address(0)) {
-                EnumerableSetUpgradeable.remove(_rentedList[prevUser], tokenIds[i]);
+                EnumerableSet.remove(_rentedList[prevUser], tokenIds[i]);
             }
 
             UserInfo storage info =  _users[tokenIds[i]];
             info.user = user;
             info.expires = expires;
-            EnumerableSetUpgradeable.add(_rentedList[user], tokenIds[i]);
+            EnumerableSet.add(_rentedList[user], tokenIds[i]);
         }
         emit UpdateUsers(user, expires, tokenIds);
     }
@@ -305,19 +293,19 @@ contract TomaasRWN is
     function _distributeEarning(address user, uint256 amount) internal {
         uint256 perAmount;
         uint256 tokenId;
-        uint256 rentCount = EnumerableSetUpgradeable.length(_rentedList[user]);
+        uint256 rentCount = EnumerableSet.length(_rentedList[user]);
 
         require(rentCount > 0, "Rent count must be greater than zero");
 
         perAmount = amount / rentCount;
         for (uint256 i = 0; i < rentCount; i++) {
-            tokenId = EnumerableSetUpgradeable.at(_rentedList[user], i);
+            tokenId = EnumerableSet.at(_rentedList[user], i);
             _unclaimedEarnings[tokenId] += perAmount;
         }
     }
 
     function payOutEarningsAllRented(uint256 amount, string memory reportUri) external nonReentrant {
-        IERC20Upgradeable token = IERC20Upgradeable(_acceptedToken);
+        IERC20 token = IERC20(_acceptedToken);
         require(amount > 0, "RWN: amountIsZero");
         require(token.balanceOf(msg.sender) >= amount, "RWN: notEnoughBalance");
         require(token.transferFrom(msg.sender, address(this), amount), "RWN: transferFailed");
@@ -333,7 +321,7 @@ contract TomaasRWN is
         require(_exists(tokenId), "RWN: tokenDoesNotExi");
         require(_users[tokenId].user == msg.sender, "RWN: senderIsNotUser");
 
-        IERC20Upgradeable token = IERC20Upgradeable(_acceptedToken);
+        IERC20 token = IERC20(_acceptedToken);
         require(token.balanceOf(msg.sender) >= amount, "RWN: notEnoughBalance");
         require(token.transferFrom(msg.sender, address(this), amount), "RWN: transferFailed");
 
@@ -349,7 +337,7 @@ contract TomaasRWN is
         require(amount > 0, "RWN: amountIsZero");
         require(tokenIds.length > 0, "RWN: tokenIdsIsZero");
 
-        IERC20Upgradeable token = IERC20Upgradeable(_acceptedToken);
+        IERC20 token = IERC20(_acceptedToken);
         require(token.balanceOf(msg.sender) >= amount, "RWN: notEnoughBalance");
         require(token.transferFrom(msg.sender, address(this), amount), "RWN: transferFailed");
 
@@ -376,7 +364,7 @@ contract TomaasRWN is
         uint256 fee = amount * _feeRate / 10000;
         uint256 amountToUser = amount - fee;
 
-        IERC20Upgradeable token = IERC20Upgradeable(_acceptedToken);
+        IERC20 token = IERC20(_acceptedToken);
         require(token.balanceOf(address(this)) >= amount, "RWN: notEnoughBalance");
         require(token.transfer(msg.sender, amountToUser), "RWN: transferFailedToUser");
         require(token.transfer(owner(), fee), "RWN: transferFailedToProtocol");
@@ -401,7 +389,7 @@ contract TomaasRWN is
         uint256 fee = amount * _feeRate / 10000;
         uint256 amountToUser = amount - fee;
 
-        IERC20Upgradeable token = IERC20Upgradeable(_acceptedToken);
+        IERC20 token = IERC20(_acceptedToken);
         require(token.balanceOf(address(this)) >= amount, "RWN: notEnoughBalance");
         require(token.transfer(msg.sender, amountToUser), "RWN: transferFailedToUser");
         require(token.transfer(owner(), fee), "RWN: transferFailedToProtocol");
@@ -445,10 +433,10 @@ contract TomaasRWN is
     }
 
     function _getRentedList(address renter) private view returns (uint256[] memory) {
-        uint256 lengthOfRentedList = EnumerableSetUpgradeable.length(_rentedList[renter]);
+        uint256 lengthOfRentedList = EnumerableSet.length(_rentedList[renter]);
         uint256[] memory nftIds = new uint256[](lengthOfRentedList);
         for (uint256 i = 0; i < lengthOfRentedList; i++) {
-            nftIds[i] = EnumerableSetUpgradeable.at(_rentedList[renter], i);
+            nftIds[i] = EnumerableSet.at(_rentedList[renter], i);
         }
         return nftIds;
     }

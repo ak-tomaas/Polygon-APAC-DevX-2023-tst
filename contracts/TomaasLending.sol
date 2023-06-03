@@ -1,13 +1,12 @@
 // SPDX-License-Identifier: BSL-1.0
 pragma solidity ^0.8.17;
 
-import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
-import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/utils/structs/EnumerableSetUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/utils/math/SafeMathUpgradeable.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/security/Pausable.sol";
+import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
+import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 
 import "./TomaasRWN.sol";
 
@@ -23,18 +22,17 @@ import "./TomaasRWN.sol";
  * @notice 
  */
 contract TomaasLending is 
-    Initializable,
-    ReentrancyGuardUpgradeable, 
-    OwnableUpgradeable,
-    PausableUpgradeable
+    ReentrancyGuard, 
+    Ownable,
+    Pausable
 {
     // Add the library methods
-    using EnumerableSetUpgradeable for EnumerableSetUpgradeable.UintSet;
-    using EnumerableSetUpgradeable for EnumerableSetUpgradeable.AddressSet;
+    using EnumerableSet for EnumerableSet.UintSet;
+    using EnumerableSet for EnumerableSet.AddressSet;
 
     struct CollectionInfo {
         TomaasRWN tomaasRWN; // address of collection
-        IERC20Upgradeable acceptedToken; // first we use USDC, later we will use Another Token
+        IERC20 acceptedToken; // first we use USDC, later we will use Another Token
         uint revenueShareRatio; // revenue share ratio for collection owner 10000 = 100%, 4000 = 40%, 1 = 0.01%
     }
 
@@ -49,10 +47,10 @@ contract TomaasLending is
     // collection address => renter address => index => url
     mapping(address => mapping(address => SettlementReport[])) private _settlementReportUrls;
     //nftaddress => tokenListForRent
-    mapping(address => EnumerableSetUpgradeable.UintSet) private _nftListForRent; 
+    mapping(address => EnumerableSet.UintSet) private _nftListForRent; 
 
     mapping(address => bool) private _renters;
-    mapping(address => EnumerableSetUpgradeable.AddressSet) private _rentersList;
+    mapping(address => EnumerableSet.AddressSet) private _rentersList;
 
     event AddNewCollection(address indexed owner, address indexed collection, address tokenAddress, uint revenueShareRatio);
     event NFTListed(address indexed nftAddress, uint256 tokenId);
@@ -64,15 +62,7 @@ contract TomaasLending is
     event RenterRegistered(address indexed nftAddr, address indexed renterAddr);
     event RenterUnregistered(address indexed nftAddr, address indexed renterAddr);
 
-    /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
-        _disableInitializers();
-    }
-
-    function initialize() initializer public {
-        __Pausable_init();
-        __Ownable_init();
-        __ReentrancyGuard_init();
     }
 
     function pause() public onlyOwner {
@@ -95,7 +85,7 @@ contract TomaasLending is
 
         address tokenAddress = tomaasRWN.getAcceptedToken();
 
-        _collections[_collectionCount] = CollectionInfo(tomaasRWN, IERC20Upgradeable(tokenAddress), revenueShareRatio);
+        _collections[_collectionCount] = CollectionInfo(tomaasRWN, IERC20(tokenAddress), revenueShareRatio);
         _collectionCount++;
 
         emit AddNewCollection(msg.sender, nftAddress, tokenAddress, revenueShareRatio);
@@ -158,7 +148,7 @@ contract TomaasLending is
     }
 
     function isListedNFT(address nftAddress, uint256 tokenId) public view returns (bool) {
-        return EnumerableSetUpgradeable.contains(_nftListForRent[nftAddress], tokenId);
+        return EnumerableSet.contains(_nftListForRent[nftAddress], tokenId);
     }
 
     /**
@@ -175,7 +165,7 @@ contract TomaasLending is
         require(tomaasRWN.getApproved(tokenId) == address(this)
          || tomaasRWN.isApprovedForAll(msg.sender, address(this)), "LP: notApproved");
 
-        EnumerableSetUpgradeable.add(_nftListForRent[nftAddress], tokenId);
+        EnumerableSet.add(_nftListForRent[nftAddress], tokenId);
 
         emit NFTListed(nftAddress, tokenId);
     }
@@ -188,7 +178,7 @@ contract TomaasLending is
     function unlistingNFT(address nftAddress, uint256 tokenId) public {
         uint16 index = getCollectionIndex(nftAddress);
         require(_collections[index].tomaasRWN.ownerOf(tokenId) == msg.sender, "LP: notOwner");
-        EnumerableSetUpgradeable.remove(_nftListForRent[nftAddress], tokenId);
+        EnumerableSet.remove(_nftListForRent[nftAddress], tokenId);
 
         emit NFTUnlisted(nftAddress, tokenId);
     }
@@ -205,7 +195,7 @@ contract TomaasLending is
 
         for (uint256 i = 0; i < totalSupply; i++) {
             if (_collections[index].tomaasRWN.ownerOf(i) == msg.sender) {
-                EnumerableSetUpgradeable.add(_nftListForRent[nftAddress], i);
+                EnumerableSet.add(_nftListForRent[nftAddress], i);
             }
         }
 
@@ -219,7 +209,7 @@ contract TomaasLending is
 
         for (uint256 i = 0; i < totalSupply; i++) {
             if (_collections[index].tomaasRWN.ownerOf(i) == msg.sender) {
-                EnumerableSetUpgradeable.remove(_nftListForRent[nftAddress], i);
+                EnumerableSet.remove(_nftListForRent[nftAddress], i);
             }
         }
 
@@ -261,16 +251,16 @@ contract TomaasLending is
     function getListingNFTs(address nftAddress) public view returns (uint256[] memory) {
         require(_existCollection(nftAddress), "LP: not found");
 
-        uint256[] memory nftIds = new uint256[](EnumerableSetUpgradeable.length(_nftListForRent[nftAddress]));
-        for (uint256 i = 0; i < EnumerableSetUpgradeable.length(_nftListForRent[nftAddress]); i++) {
-            nftIds[i] = EnumerableSetUpgradeable.at(_nftListForRent[nftAddress], i);
+        uint256[] memory nftIds = new uint256[](EnumerableSet.length(_nftListForRent[nftAddress]));
+        for (uint256 i = 0; i < EnumerableSet.length(_nftListForRent[nftAddress]); i++) {
+            nftIds[i] = EnumerableSet.at(_nftListForRent[nftAddress], i);
         }
         return nftIds;
     }
 
     function getCountOfNFTsListed(address nftAddress) public view returns (uint256) {
         require(_existCollection(nftAddress), "LP: not found");
-        return EnumerableSetUpgradeable.length(_nftListForRent[nftAddress]);
+        return EnumerableSet.length(_nftListForRent[nftAddress]);
     }
 
     /**
@@ -346,10 +336,10 @@ contract TomaasLending is
     }
 
     function listRenters(address nftAddr) public view returns (address[] memory) {
-        uint256 count = EnumerableSetUpgradeable.length(_rentersList[nftAddr]);
+        uint256 count = EnumerableSet.length(_rentersList[nftAddr]);
         address[] memory renters = new address[](count);
         for (uint256 i = 0; i < count; i++) {
-            renters[i] = EnumerableSetUpgradeable.at(_rentersList[nftAddr], i);
+            renters[i] = EnumerableSet.at(_rentersList[nftAddr], i);
         }
         return renters;
     }

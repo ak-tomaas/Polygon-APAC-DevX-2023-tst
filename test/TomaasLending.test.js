@@ -31,7 +31,7 @@ describe("TomaasLending", function () {
     [owner, holder, renter, buyer, holder2, renter2, buyer2] = await ethers.getSigners();
 
     const ERC20 = await ethers.getContractFactory("ERC20Mock");
-    usdc = await upgrades.deployProxy(ERC20, ["USD Coin", "USDC"]);
+    usdc = await ERC20.deploy("USD Coin", "USDC");
     await usdc.deployed();
 
     await usdc.connect(owner).mint(owner.address, TWO_USDC.mul(1000000));
@@ -40,11 +40,11 @@ describe("TomaasLending", function () {
 
     // Deploy TomaasRWN
     TomaasRWN = await ethers.getContractFactory("TomaasRWN");
-    tomaasRWN = await upgrades.deployProxy(TomaasRWN, [COLLECTION_NAME_1, usdc.address, 1647542400, 4, 1000]);
+    tomaasRWN = await TomaasRWN.deploy(COLLECTION_NAME_1, usdc.address, 1647542400, 4, 1000);
     await tomaasRWN.deployed();
 
     const TomaasLending = await ethers.getContractFactory("TomaasLending");
-    tomaasLending = await upgrades.deployProxy(TomaasLending);
+    tomaasLending = await TomaasLending.deploy();
     await tomaasLending.deployed();
 
     await tomaasRWN.connect(owner).transferOwnership(tomaasLending.address);
@@ -55,7 +55,7 @@ describe("TomaasLending", function () {
     it("should add a new collection", async function () {
       // Test case code
       const TomaasRWN = await ethers.getContractFactory("TomaasRWN");
-      const tomNFT2 = await upgrades.deployProxy(TomaasRWN, [COLLECTION_NAME_2, usdc.address, 1647542400, 4, 1000]);
+      const tomNFT2 = await TomaasRWN.deploy(COLLECTION_NAME_2, usdc.address, 1647542400, 4, 1000);
       await tomNFT2.deployed();
 
       const tx = await tomaasLending.addCollection(tomNFT2.address, REVENUE_SHARE_RATIO);

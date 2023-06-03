@@ -24,7 +24,7 @@ describe("TomaasRWN", function () {
         [owner, holder, renter, buyer, holder2, renter2, buyer2] = await ethers.getSigners();
     
         const ERC20 = await ethers.getContractFactory("ERC20Mock");
-        usdc = await upgrades.deployProxy(ERC20, ["USD Coin", "USDC"]);
+        usdc = await ERC20.deploy("USD Coin", "USDC");
         await usdc.deployed();
 
         decimals = (await usdc.decimals()).toString();
@@ -40,11 +40,11 @@ describe("TomaasRWN", function () {
         const svcStartDate = Math.floor(new Date("2020-11-20").getTime() / 1000);
 
         const price = ethers.utils.parseUnits(RWA_PRICE_USDC, decimals);
-        tomaasRWN = await upgrades.deployProxy(TomaasRWN, [
+        tomaasRWN = await TomaasRWN.deploy( 
                                         TOKEN_NAME, 
                                         usdc.address, 
                                         RWA_SVCSTARTDATE,
-                                        RWA_USEFUL_LIFE, price]);
+                                        RWA_USEFUL_LIFE, price);
         await tomaasRWN.deployed();
     });
 

@@ -1,25 +1,20 @@
 // SPDX-License-Identifier: BSL-1.0
 pragma solidity ^0.8.17;
 
-import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
-import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/utils/structs/EnumerableSetUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/security/Pausable.sol";
+import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import "./TomaasRWN.sol";
 import "./TomaasLending.sol";
 
-contract TomaasMarketplace is 
-    Initializable,
-    ReentrancyGuardUpgradeable, 
-    OwnableUpgradeable, 
-    PausableUpgradeable 
+contract TomaasMarketplace is ReentrancyGuard, Ownable, Pausable
 {
 
     // Add the library methods
-    using EnumerableSetUpgradeable for EnumerableSetUpgradeable.UintSet;
+    using EnumerableSet for EnumerableSet.UintSet;
 
     uint8 public _salesFee;
     TomaasLending private _tomaasLending;
@@ -43,21 +38,9 @@ contract TomaasMarketplace is
     event NFTsListedForSale(address indexed collection, uint256 price, uint256[] tokenIds);
     event NFTsBought(address indexed collection, uint256[] prices, uint256[] tokenIds);
 
-    /// @custom:oz-upgrades-unsafe-allow constructor
-    constructor() {
-        _disableInitializers();
-    }
-
-    /**
-     * 
-     * @param lendingProtocolAddress address of lending protocol
-     */
-    function initialize(address lendingProtocolAddress) initializer public {
+    constructor(address lendingProtocolAddress) {
         _salesFee = 100; //1%
         _tomaasLending = TomaasLending(lendingProtocolAddress);
-        __Pausable_init();
-        __Ownable_init();
-        __ReentrancyGuard_init();
     }
 
     function pause() public onlyOwner {
@@ -198,7 +181,7 @@ contract TomaasMarketplace is
         require(_listForSale[nftAddress][tokenId].isAvailable, "TM: NFT is not for sale");
         require(_listForSale[nftAddress][tokenId].price == price, "TM: price is not correct");
 
-        IERC20Upgradeable token = collectionInfo.acceptedToken; //it's from TomaasRWN's acceptedToken
+        IERC20 token = collectionInfo.acceptedToken; //it's from TomaasRWN's acceptedToken
         require(token.balanceOf(msg.sender) >= price, "TM: not enough token balance");
 
         uint256 fee = price * (_salesFee / 10000);
@@ -234,7 +217,7 @@ contract TomaasMarketplace is
         TomaasLending.CollectionInfo memory collectionInfo = _tomaasLending.getCollectionInfo(nftAddress);
         TomaasRWN tomaasRWN = TomaasRWN(nftAddress);
 
-        IERC20Upgradeable token = collectionInfo.acceptedToken; //it's from TomaasRWN's acceptedToken
+        IERC20 token = collectionInfo.acceptedToken; //it's from TomaasRWN's acceptedToken
         require(token.balanceOf(msg.sender) >= sumOfPrice, "TM: not enough token balance");
 
         for (uint256 i = 0; i < tokenIds.length; i++) {

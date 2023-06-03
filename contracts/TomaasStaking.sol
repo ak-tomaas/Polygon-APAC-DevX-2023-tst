@@ -1,34 +1,35 @@
 // SPDX-License-Identifier: BSL-1.0
 pragma solidity ^0.8.17;
 
-import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
-import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/utils/structs/EnumerableSetUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/utils/math/SafeMathUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/token/ERC721/IERC721ReceiverUpgradeable.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
+import "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol";
+import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+import "@openzeppelin/contracts/security/Pausable.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/utils/Counters.sol";
+import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
+import "@openzeppelin/contracts/utils/math/SafeMath.sol";
+import "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
 
 import "./TomaasRWN.sol";
 import "./TomaasLPN.sol";
 
 contract TomaasStaking is 
-    Initializable,
-    ReentrancyGuardUpgradeable, 
-    OwnableUpgradeable,
-    PausableUpgradeable,
-    IERC721ReceiverUpgradeable
+    ReentrancyGuard, 
+    Ownable,
+    Pausable,
+    IERC721Receiver
 {
     struct InfoTRN {
         TomaasRWN tomaasRWN; // address of collection
-        IERC20Upgradeable acceptedToken; // first we use USDC, later we will use Another Token
+        IERC20 acceptedToken; // first we use USDC, later we will use Another Token
         uint revenueShareRatio; // revenue share ratio for collection owner 10000 = 100%, 4000 = 40%, 1 = 0.01%
     }
 
     struct InfoTLN {
         TomaasLPN tomaasLPN; // address of collection
-        IERC20Upgradeable acceptedToken; // first we use USDC, later we will use Another Token
+        IERC20 acceptedToken; // first we use USDC, later we will use Another Token
         uint256 price; // price to mint TLN
         uint[] interestRates; // interest rates for collection owner 10000 = 100%, 4000 = 40%, 1 = 0.01%
         uint256[] rewardsPerDay; //rewards per day
@@ -44,12 +45,12 @@ contract TomaasStaking is
     
     //list TRNs to purchase
     //nftaddress => tokenId
-    mapping(address => EnumerableSetUpgradeable.UintSet) private _listOfTRNsToPurchase;
+    mapping(address => EnumerableSet.UintSet) private _listOfTRNsToPurchase;
     mapping(address => uint256) _priceOfTRN;
 
     //list of TRNs owned by this contract
     //nftaddress => tokenId
-    mapping(address => EnumerableSetUpgradeable.UintSet) private _listOfTRNsOwned;
+    mapping(address => EnumerableSet.UintSet) private _listOfTRNsOwned;
 
     mapping(address => mapping(uint => uint256)) private _settlementDates;
     mapping(address => uint) private _countOfSettlementDates;
@@ -59,10 +60,10 @@ contract TomaasStaking is
     //so let's just accept the extra minting
     //list of TLNs to wait to stake
     //nftaddress => tokenId
-    //mapping(address => EnumerableSetUpgradeable.UintSet) private _listOfTLNsToStake;
+    //mapping(address => EnumerableSet.UintSet) private _listOfTLNsToStake;
 
     //tlnAddr => staker address => tokenIds
-    mapping(address => mapping(address => EnumerableSetUpgradeable.UintSet)) private _listOfTLNsStaked;
+    mapping(address => mapping(address => EnumerableSet.UintSet)) private _listOfTLNsStaked;
     
     //tlnAddr => staker => lastClaimDate
     mapping(address => mapping(address => uint256)) private _lastClaimDate;
@@ -81,15 +82,7 @@ contract TomaasStaking is
     event UnstakeTLNs(address indexed tlnAddr, address indexed staker, uint256 tokenId);
     event Claim(address indexed tlnAddr, address indexed staker, uint256 amount);
 
-    /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
-        _disableInitializers();
-    }
-
-    function initialize() initializer public {
-        __Pausable_init();
-        __Ownable_init();
-        __ReentrancyGuard_init();
     }
 
     function pause() public onlyOwner {
@@ -116,7 +109,7 @@ contract TomaasStaking is
                           uint revenueShareRatio
     ) public onlyOwner {
         _TRNs[_countOfTRNs].tomaasRWN = TomaasRWN(trnAddr);
-        _TRNs[_countOfTRNs].acceptedToken = IERC20Upgradeable(acceptedToken);
+        _TRNs[_countOfTRNs].acceptedToken = IERC20(acceptedToken);
         _TRNs[_countOfTRNs].revenueShareRatio = revenueShareRatio;
         _countOfTRNs++;
 
@@ -142,7 +135,7 @@ contract TomaasStaking is
 
     function claimFromTRNs(address trnAddr) public onlyOwner nonReentrant {
         require(_existTRN(trnAddr), "TS: TRN not exist");
-        uint256 countOfTRNs = EnumerableSetUpgradeable.length(_listOfTRNsOwned[trnAddr]);        
+        uint256 countOfTRNs = EnumerableSet.length(_listOfTRNsOwned[trnAddr]);        
         require( countOfTRNs > 0, "TS: No TRNs owned");
 
         TomaasRWN trn = TomaasRWN(trnAddr);
@@ -162,7 +155,7 @@ contract TomaasStaking is
 
     function lengthOfTRNsToPurchase(address trnAddr) public view returns (uint256 length) {
         require(_existTRN(trnAddr), "TS: TRN not exist");
-        return EnumerableSetUpgradeable.length(_listOfTRNsToPurchase[trnAddr]);
+        return EnumerableSet.length(_listOfTRNsToPurchase[trnAddr]);
     }
 
     function setPriceOfTRN(address trnAddr, uint256 price) public onlyOwner {
@@ -177,7 +170,7 @@ contract TomaasStaking is
       uint256 length;
       InfoTRN memory infoTRN = getInfoTRN(trnAddr);
 
-      length = EnumerableSetUpgradeable.length(_listOfTRNsToPurchase[trnAddr]);
+      length = EnumerableSet.length(_listOfTRNsToPurchase[trnAddr]);
       require(length> 0, "TS: No TRNs to purchase");
 
       uint256 priceOfTRN = _priceOfTRN[trnAddr];
@@ -196,23 +189,23 @@ contract TomaasStaking is
       uint256 amount = quantityForPurchase * priceOfTRN;
       require(_balanceOfStaked >= amount, "TS: Not enough staked tokens");
 
-      IERC20Upgradeable token = infoTRN.acceptedToken; //it's from TomaasRWN's acceptedToken
+      IERC20 token = infoTRN.acceptedToken; //it's from TomaasRWN's acceptedToken
       require(token.balanceOf(address(this)) >= amount, "TM: not enough token balance");
 
       uint256[] memory soldTokenIds = new uint256[](quantityForPurchase);
 
       for (uint256 i = 0; i < quantityForPurchase; i++) {
-        uint256 tokenId = EnumerableSetUpgradeable.at(_listOfTRNsToPurchase[trnAddr], i);
+        uint256 tokenId = EnumerableSet.at(_listOfTRNsToPurchase[trnAddr], i);
         address owner = trn.ownerOf(tokenId);
         trn.safeTransferFrom(owner, address(this), tokenId);
         token.transfer(owner, priceOfTRN);
-        EnumerableSetUpgradeable.add(_listOfTRNsOwned[trnAddr], tokenId);
+        EnumerableSet.add(_listOfTRNsOwned[trnAddr], tokenId);
         soldTokenIds[i] = tokenId;
       }
 
       //remove sold tokens from _listOfTRNsToPurchase
       for (uint256 i = 0; i < soldTokenIds.length; i++) {
-        EnumerableSetUpgradeable.remove(_listOfTRNsToPurchase[trnAddr], soldTokenIds[i]); 
+        EnumerableSet.remove(_listOfTRNsToPurchase[trnAddr], soldTokenIds[i]); 
       }
 
       _balanceOfStaked -= amount;
@@ -247,7 +240,7 @@ contract TomaasStaking is
 
       //purchase quantity of TRNs and add the remaining TRNs to _listOfTRNsToPurchase 
       uint256 amount = quantityForPurchase * priceOfTRN;
-      IERC20Upgradeable token = getInfoTRN(trnAddr).acceptedToken; //it's from TomaasRWN's acceptedToken
+      IERC20 token = getInfoTRN(trnAddr).acceptedToken; //it's from TomaasRWN's acceptedToken
       require(token.balanceOf(address(this)) >= amount, "TM: not enough token balance");
 
       uint256[] memory soldTokenIds = new uint256[](quantityForPurchase);
@@ -256,8 +249,8 @@ contract TomaasStaking is
         address owner = trn.ownerOf(tokenId);
         require(owner == address(this), "TS: TRN not owned by pool");
         trn.safeTransferFrom(owner, address(this), tokenId);
-        EnumerableSetUpgradeable.add(_listOfTRNsToPurchase[trnAddr], tokenId);
-        EnumerableSetUpgradeable.remove(_listOfTRNsOwned[trnAddr], tokenId); 
+        EnumerableSet.add(_listOfTRNsToPurchase[trnAddr], tokenId);
+        EnumerableSet.remove(_listOfTRNsOwned[trnAddr], tokenId); 
         soldTokenIds[i] = tokenId;
       }
       token.transfer(msg.sender, amount);
@@ -268,7 +261,7 @@ contract TomaasStaking is
         uint256 start = tokenIds.length - remaining;
         for (uint256 i = start; i < tokenIds.length; i++) {
           uint256 tokenId = tokenIds[i];
-          EnumerableSetUpgradeable.add(_listOfTRNsToPurchase[trnAddr], tokenId);
+          EnumerableSet.add(_listOfTRNsToPurchase[trnAddr], tokenId);
         }
       }
 
@@ -327,7 +320,7 @@ contract TomaasStaking is
       }
 
       _TLNs[_countOfTLNs].tomaasLPN = TomaasLPN(tlnAddr);
-      _TLNs[_countOfTLNs].acceptedToken = IERC20Upgradeable(tokenAddr);
+      _TLNs[_countOfTLNs].acceptedToken = IERC20(tokenAddr);
       _TLNs[_countOfTLNs].price = price;
       _countOfTLNs++;
 
@@ -344,12 +337,12 @@ contract TomaasStaking is
 
     function listOfTLNs(address tlnAddr) public view returns (uint256[] memory tokenIds) {
       require(_existTLN(tlnAddr), "TS: TLN not exist");
-      uint256 length = EnumerableSetUpgradeable.length(_listOfTLNsStaked[tlnAddr][msg.sender]);
+      uint256 length = EnumerableSet.length(_listOfTLNsStaked[tlnAddr][msg.sender]);
       if (length == 0) return new uint256[](0); //return empty array
 
       tokenIds = new uint256[](length);
       for (uint256 i = 0; i < length; i++) {
-        tokenIds[i] = EnumerableSetUpgradeable.at(_listOfTLNsStaked[tlnAddr][msg.sender], i);
+        tokenIds[i] = EnumerableSet.at(_listOfTLNsStaked[tlnAddr][msg.sender], i);
       }
       return tokenIds;
     }
@@ -378,7 +371,7 @@ contract TomaasStaking is
         tln.safeTransferFrom(msg.sender, address(this), tokenId);
         tln.withdraw(tokenId);
 
-        EnumerableSetUpgradeable.add(_listOfTLNsStaked[tlnAddr][msg.sender], tokenId);
+        EnumerableSet.add(_listOfTLNsStaked[tlnAddr][msg.sender], tokenId);
       }
 
       _totalStakedTokens += tokenIds.length;
@@ -410,7 +403,7 @@ contract TomaasStaking is
       tln.safeTransferFrom(address(this), msg.sender, tokenId);
       tln.depositToken(tokenId);
 
-      EnumerableSetUpgradeable.remove(_listOfTLNsStaked[tlnAddr][msg.sender], tokenId);
+      EnumerableSet.remove(_listOfTLNsStaked[tlnAddr][msg.sender], tokenId);
 
       _totalStakedTokens -= 1;
       _balanceOfStaked -= amountToUnStake;
@@ -472,7 +465,7 @@ contract TomaasStaking is
       uint256 amount = 0;
       // //check count of staked tokens
       // //get info from
-      // uint256 length = EnumerableSetUpgradeable.length(_listOfTLNsStaked[tlnAddr][staker]);
+      // uint256 length = EnumerableSet.length(_listOfTLNsStaked[tlnAddr][staker]);
       // amount = length * getInfoTLN(tlnAddr).price;
       
       //get last claim date of staker;
@@ -553,7 +546,7 @@ contract TomaasStaking is
                               address from, 
                               uint256 tokenId, 
                               bytes calldata data
-    ) public view returns(bytes4) 
+    ) external view returns(bytes4) 
     {
       operator;
       from;

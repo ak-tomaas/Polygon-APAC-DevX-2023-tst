@@ -13,10 +13,10 @@ const FLO_USEFUL_LIFE = 4;
 const FLO_RWA_AMOUNT = 1600;
 const FLO_REVENEUE_SHARE_RATIO = 4000; // 40%
 
-const TRN_MINT_AMOUNT = 3; // 16 * 100
-const TRN_FOR_SALES = 1; // 4 * 100
-const TRN_SELL_TO_POOL = 1; // 12 * 100
-const QUANTITY_AT_ONCE = 10; //100
+const TRN_MINT_AMOUNT = 16; // 16 * 100
+const TRN_FOR_SALES = 4; // 4 * 100
+const TRN_SELL_TO_POOL = 12; // 12 * 100
+const QUANTITY_AT_ONCE = 100; //100
 
 //const TRN_PRICE = "100";
 
@@ -67,11 +67,12 @@ async function main() {
 
   //deploy USDC for tomaas testing
   const USDC = await hre.ethers.getContractFactory("ERC20Mock");
-  let usdc = await upgrades.deployProxy(USDC, ["USD Coin", "USDC"]);
+  let usdc = await USDC.deploy("USD Coin", "USDC");
   await usdc.deployed();
   console.log("USDC address:", usdc.address);
 
   let decimals = await usdc.decimals();
+  console.log("USDC decimals : ", decimals);
 
   USDC_100 = ethers.utils.parseUnits("100", decimals);
   USDC_300 = ethers.utils.parseUnits("300", decimals);
@@ -79,17 +80,19 @@ async function main() {
   USDC_100K = ethers.utils.parseUnits("100000", decimals);
 
   usdc.mint(deployer.address, USDC_100K);
+  console.log("USDC minted");
 
   const TomaasRWN = await hre.ethers.getContractFactory("TomaasRWN");
 
+  console.log("TomaasRWN");
   const COLLECTION_NAME_1 = "TRN FLO #1";
 
-  const trnFlo1 = await upgrades.deployProxy(TomaasRWN, 
-                              [ COLLECTION_NAME_1, 
+  const trnFlo1 = await TomaasRWN.deploy(COLLECTION_NAME_1, 
                                 usdc.address, 
                                 FLO_SSD, 
                                 FLO_USEFUL_LIFE, 
-                                USDC_770]);
+                                USDC_770);
+  console.log("ToomasRWN deploying...");
   await trnFlo1.deployed();
   console.log("TRN FLO #1 address:", trnFlo1.address);
 
@@ -104,7 +107,7 @@ async function main() {
   }
 
   const TomaasLending = await hre.ethers.getContractFactory("TomaasLending");
-  const tomaasLending = await upgrades.deployProxy(TomaasLending);
+  const tomaasLending = await TomaasLending.deploy();
   await tomaasLending.deployed();
   console.log("TomaasLending address:", tomaasLending.address);
 
@@ -113,10 +116,9 @@ async function main() {
   await tomaasLending.registerRenter(trnFlo1.address, spAddress);
 
   const TomaasMarketplace = await hre.ethers.getContractFactory("TomaasMarketplace");
-  const tomaasMarketplace = await upgrades.deployProxy(TomaasMarketplace, [tomaasLending.address]);
+  const tomaasMarketplace = await TomaasMarketplace.deploy(tomaasLending.address);
   await tomaasMarketplace.deployed();
   console.log("TomaasMarketplace address:", tomaasMarketplace.address);
-
 
   //set approval for all
   await trnFlo1.connect(vehicleOwner).setApprovalForAll(tomaasMarketplace.address, true);
@@ -136,7 +138,7 @@ async function main() {
   console.log("saleInfos of marketplace: ", saleInfos.length);
 
   const TomaasLPN = await hre.ethers.getContractFactory("TomaasLPN");
-  const tomaasLPN = await upgrades.deployProxy(TomaasLPN, [usdc.address, USDC_100]);
+  const tomaasLPN = await TomaasLPN.deploy(usdc.address, USDC_100);
   await tomaasLPN.deployed();
   console.log("Tomaas LPN address:", tomaasLPN.address);
 
@@ -145,7 +147,7 @@ async function main() {
   console.log("Tomaas LPN supply:", (await tomaasLPN.totalSupply()).toString());
 
   const TomaasSP = await hre.ethers.getContractFactory("TomaasStaking");
-  const tomaasStaking = await upgrades.deployProxy(TomaasSP, []);
+  const tomaasStaking = await TomaasSP.deploy(); 
   await tomaasStaking.deployed();
   console.log("Tomaas Staking address:", tomaasStaking.address);
 
@@ -182,7 +184,7 @@ async function main() {
   let totalStaked = await tomaasStaking.connect(deployer).totalStakedTokens();
   console.log("total staked tokens: ", totalStaked.toString());
 
-  // saveFrontendFiles(usdc, trnFlo1, tomaasLending, tomaasMarketplace, tomaasLPN, tomaasStaking); 
+  saveFrontendFiles(usdc, trnFlo1, tomaasLending, tomaasMarketplace, tomaasLPN, tomaasStaking); 
 }
 
 function saveFrontendFiles(usdc, tomaasRWN, tomaasLending, tomaasMarketplace, tomaasLPN, tomaasSP) {

@@ -39,7 +39,7 @@ describe("TomaasStaking", function () {
     [owner, trnHolder, tlnHolder, renter, trnHolder2, tlnHolder2] = await ethers.getSigners();
 
     const ERC20 = await ethers.getContractFactory("ERC20Mock");
-    usdc = await upgrades.deployProxy(ERC20, ["USD Coin", "USDC"]); 
+    usdc = await ERC20.deploy("USD Coin", "USDC"); 
     await usdc.deployed();
     
     decimals = (await usdc.decimals()).toString();
@@ -57,23 +57,21 @@ describe("TomaasStaking", function () {
 
     const trnPrice = ethers.utils.parseUnits(RWA_PRICE_USDC, decimals);
     const TomaasRWN = await ethers.getContractFactory("TomaasRWN");
-    tomaasRWN = await upgrades.deployProxy(TomaasRWN, 
-                          [ TRN_NAME_1, 
+    tomaasRWN = await TomaasRWN.deploy(
+                            TRN_NAME_1, 
                             usdc.address, 
                             RWA_SVCSTARTDATE,
                             RWA_USEFUL_LIFE, 
-                            trnPrice]); 
+                            trnPrice); 
     await tomaasRWN.deployed();
 
     const tlnPrice = ethers.utils.parseUnits(TRN_PRICE_USDC, decimals);
     const TomaasLPN = await ethers.getContractFactory("TomaasLPN");
-    tomaasLPN = await upgrades.deployProxy(TomaasLPN, 
-                          [ usdc.address, 
-                            tlnPrice]);
+    tomaasLPN = await TomaasLPN.deploy(usdc.address, tlnPrice);
     await tomaasLPN.deployed();
 
     const TomaasStaking = await ethers.getContractFactory("TomaasStaking");
-    tomaasStaking = await upgrades.deployProxy(TomaasStaking, []);
+    tomaasStaking = await TomaasStaking.deploy();
     await tomaasStaking.deployed();
 
     await tomaasStaking.connect(owner).addTRNAddress(tomaasRWN.address, usdc.address, REVENUE_SHARE_RATIO);

@@ -9,17 +9,16 @@ describe("Withdraw", () => {
     let tokenURI = "https://ipfs.io/ipfs/Qm..."; // Add your tokenURI here
     const USDC_UNIT = ethers.utils.parseUnits("1000", 6).mul(1000000);
     const ERC20 = await ethers.getContractFactory("ERC20Mock");
-    usdc = await upgrades.deployProxy(ERC20, ["USD Coin", "USDC"]);
+    usdc = await ERC20.deploy("USD Coin", "USDC");
     await usdc.deployed();
 
     await usdc.connect(owner).mint(owner.address, USDC_UNIT);
     await usdc.connect(owner).mint(addr1.address, USDC_UNIT);
 
     TomaasLPN = await ethers.getContractFactory("TomaasLPN");
-    tomaasLPN = await upgrades.deployProxy(TomaasLPN, [
+    tomaasLPN = await TomaasLPN.deploy(
       usdc.address,
-      ethers.utils.parseUnits("100", 6).mul(1000000),
-    ]);
+      ethers.utils.parseUnits("100", 6).mul(1000000));
     await tomaasLPN.deployed();
 
     await usdc
