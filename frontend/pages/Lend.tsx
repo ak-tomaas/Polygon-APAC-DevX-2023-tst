@@ -5,6 +5,7 @@ import Head from 'next/head'
 
 import { Network, Alchemy } from "alchemy-sdk";
 import { ethers } from "ethers";
+import { Client, cacheExchange, fetchExchange } from 'urql';
 
 import ContractAddressJSON from "../contracts/sepolia/contract-address.json";
 import USDCABI from "../contracts/sepolia/ERC20UpgradeableABI.json";
@@ -21,6 +22,26 @@ const settings = {
 };
 
 const alchemy = new Alchemy(settings);
+
+const APIURL = 'https://api.studio.thegraph.com/query/47855/ethseoul-2023-subgraph/version/latest'
+
+const tokensQuery = `
+query {
+  settlementReportAddeds(
+    orderBy: settlementDate,
+    orderDirection: desc,
+  ) {
+    nftAddress
+    renter
+    reportUri
+    settlementDate
+  }
+}
+`
+const client = new Client({
+  url: APIURL,
+  exchanges: [cacheExchange, fetchExchange],
+});
 
 export async function getServerSideProps() {
   // Fetch data from external API
@@ -45,6 +66,7 @@ const Lend: NextPage = ({ data } : any) => {
   const [remainingRewards, setRemainingRewards] = useState(0);
   const [rewardsOverTheYear, setRewardsOverTheYear] = useState("");
   const [totalSupply, setTotalSupply] = useState("");
+  const [reportList, setReportList] = useState<any[]>([]);
 
   async function loadTRN(signer: ethers.Signer, decimals: number) {
     let trnContract:any = null;
@@ -168,7 +190,32 @@ const Lend: NextPage = ({ data } : any) => {
     await trnContract.claimEarningsAllRented();
   }
 
+  async function _fetchData() {
+    const response = await client.query(tokensQuery, {}).toPromise();
+    // console.log("response : ", response);
+    try {
+      let length = response.data?.settlementReportAddeds?.length;
+      if (length > 0) {
+        let reportList = response.data?.settlementReportAddeds.map((report: any) => {
+          return {
+            settlementDate: new Date(report.settlementDate * 1000).toLocaleDateString(),
+            renter: report.renter,
+            reportUri: report.reportUri,
+            TRNsAddr: report.nftAddress
+          }
+        });
+        console.log("reportList : ", reportList);
+        setReportList(reportList);
+      }
+    }
+    catch (err) {
+      console.log(err);
+    }
+  }
+
   useEffect(() => {
+    _fetchData();
+
     if (window.ethereum === undefined) {
       console.log("there isn't crypto wallet");
       return;
@@ -266,26 +313,28 @@ const Lend: NextPage = ({ data } : any) => {
       </SectionTitle>
       <SectionTitle align="left"
         pretitle=""
-        title="Transaction history">
+        title="Report history">
         <div className="transaction-history mt-8 flow-root">
           <div className="-mx-4 -my-2 overflow-x-auto sm:-mx-6 lg:-mx-8">
             <div className="inline-block min-w-full py-2 align-middle sm:px-6 lg:px-8">
               <table className="min-w-full divide-y divide-gray-300">
                 <thead>
                   <tr className='bg-white'>
-                    <th scope="col" className="whitespace-nowrap py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900 sm:pl-0">Feature</th>
-                    <th scope="col" className="whitespace-nowrap px-2 py-3.5 text-left text-sm font-semibold text-gray-900">Address</th>
-                    <th scope="col" className="whitespace-nowrap px-2 py-3.5 text-left text-sm font-semibold text-gray-900">Date</th>
-                    <th scope="col" className="whitespace-nowrap px-2 py-3.5 text-left text-sm font-semibold text-gray-900">Status</th>
+                    <th scope="col" className="whitespace-nowrap py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900 sm:pl-0">Date</th>
+                    <th scope="col" className="whitespace-nowrap px-2 py-3.5 text-left text-sm font-semibold text-gray-900">Renter</th>
+                    <th scope="col" className="whitespace-nowrap px-2 py-3.5 text-left text-sm font-semibold text-gray-900">Report URL</th>
+                    <th scope="col" className="whitespace-nowrap px-2 py-3.5 text-left text-sm font-semibold text-gray-900">TRN Address</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200">
-                  <tr>
-                    <td className="whitespace-nowrap py-2 pl-4 pr-3 text-sm text-gray-900 sm:pl-0">Deposit</td>
-                    <td className="whitespace-nowrap px-2 py-2 text-sm font-medium text-gray-900">0x5e6cd747...73437aded3</td>
-                    <td className="whitespace-nowrap px-2 py-2 text-sm text-gray-900">2023-05-17 10:46:22</td>
-                    <td className="whitespace-nowrap px-2 py-2 text-sm text-gray-900">Approve</td>
-                  </tr>
+                  {reportList.map((item, index) => (
+                    <tr key={index}>
+                      <td className="whitespace-nowrap py-2 pl-4 pr-3 text-sm text-gray-900 sm:pl-0">{item.settlementDate}</td>
+                      <td className="whitespace-nowrap px-2 py-2 text-sm font-medium text-gray-900">{item.renter}</td>
+                      <td className="whitespace-nowrap px-2 py-2 text-sm text-gray-900"><a href={item.reportUri}>{item.reportUri}</a></td>
+                      <td className="whitespace-nowrap px-2 py-2 text-sm text-gray-900">{item.TRNsAddr}</td>
+                    </tr>
+                  ))}
                 </tbody>
               </table>
             </div>

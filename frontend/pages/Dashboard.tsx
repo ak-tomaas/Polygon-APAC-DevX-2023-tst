@@ -179,7 +179,7 @@ const Dashboard: NextPage = () => {
 
   const claimFromTRNs = async () => {
     try {
-      await stakingContract.claimFromTRNs(ContractAddressJSON.TomaasRWN);
+      await stakingContract.claimFromTRNs(ContractAddressJSON.TomaasRWN, {gasPrice: 100000000});
     }
     catch (err) {
       console.log(err);
@@ -284,7 +284,7 @@ const Dashboard: NextPage = () => {
               <h3 className="mt-1 text-base font-semibold text-gray-900">{remainingTLNRewards} USDC</h3>
             </div>
             <div className="flex flex-col">
-              <p className="mt-1 text-sm text-gray-500">My TRNs</p>
+              <p className="mt-1 text-sm text-gray-500">My TLNs</p>
               <h3 className="mt-1 text-base font-semibold text-gray-900">{amountOfTLNs} amount</h3>
             </div>
           </div>

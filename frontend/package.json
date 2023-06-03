@@ -17,12 +17,14 @@
     "@tailwindcss/aspect-ratio": "^0.4.2",
     "alchemy-sdk": "^2.8.3",
     "ethers": "^5.7.2",
+    "graphql": "^16.6.0",
     "jotai": "^2.1.0",
     "next": "latest",
     "next-themes": "^0.2.1",
     "react": "18.2.0",
     "react-dom": "18.2.0",
-    "sharp": "^0.32.1"
+    "sharp": "^0.32.1",
+    "urql": "^4.0.3"
   },
   "devDependencies": {
     "@types/node": "18.11.3",
