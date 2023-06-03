@@ -1,6 +1,6 @@
 
 import { ethers } from 'ethers';
-import { use, useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 
 import styled from '@emotion/styled'
 
