@@ -5,11 +5,11 @@ import Head from 'next/head'
 import { Network, Alchemy } from "alchemy-sdk";
 import { ethers } from "ethers";
 
-import LendingJSON from "../contracts/sepolia/TomaasLending.json";
-import TRNJSON from "../contracts/sepolia/TomaasLPN.json";
-import USDCABI from "../contracts/sepolia/ERC20UpgradeableABI.json";
-import MarketplaceJSON from "../contracts/sepolia/TomaasMarketplace.json";
-import ContractAddressJSON from "../contracts/sepolia/contract-address.json";
+import LendingJSON from "../contracts/polygon/TomaasLending.json";
+import TRNJSON from "../contracts/polygon/TomaasLPN.json";
+import USDCABI from "../contracts/polygon/ERC20UpgradeableABI.json";
+import MarketplaceJSON from "../contracts/polygon/TomaasMarketplace.json";
+import ContractAddressJSON from "../contracts/polygon/contract-address.json";
 
 import Navbar from '../components/navbar';
 import SectionTitle from '../components/sectionTitle';
@@ -17,8 +17,8 @@ import Footer from '../components/footer';
 import DescriptionCard from '../components/descriptionCard';
 
 const settings = {
-  apiKey: "mjigLH16AH2bdolh5gDPf-Ef5SCemJJx",
-  network: Network.ETH_SEPOLIA,
+  apiKey: process.env.ALCHEMY_POLYGON_API_KEY,
+  network: Network.MATIC_MAINNET,
 };
 
 const alchemy = new Alchemy(settings);

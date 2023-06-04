@@ -9,17 +9,17 @@ import SectionTitle from '../components/sectionTitle';
 import Footer from '../components/footer';
 import Container from "../components/container";
 
-import ContractAddressJSON from "../contracts/sepolia/contract-address.json";
-import ERC20Mock from "../contracts/sepolia/ERC20Mock.json";
-import TomaasRWNJSON from "../contracts/sepolia/TomaasRWN.json";
-import TomaasLPNJSON from "../contracts/sepolia/TomaasLPN.json";
-import StakingJSON from "../contracts/sepolia/TomaasStaking.json";
+import ContractAddressJSON from "../contracts/polygon/contract-address.json";
+import ERC20Mock from "../contracts/polygon/ERC20Mock.json";
+import TomaasRWNJSON from "../contracts/polygon/TomaasRWN.json";
+import TomaasLPNJSON from "../contracts/polygon/TomaasLPN.json";
+import StakingJSON from "../contracts/polygon/TomaasStaking.json";
 
 import { useEffect, useState } from 'react';
 
 const settings = {
-  apiKey: "mjigLH16AH2bdolh5gDPf-Ef5SCemJJx",
-  network: Network.ETH_SEPOLIA,
+  apiKey: process.env.ALCHEMY_POLYGON_API_KEY,
+  network: Network.MATIC_MAINNET,
 };
 
 const alchemy = new Alchemy(settings);

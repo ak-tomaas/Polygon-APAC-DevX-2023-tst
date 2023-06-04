@@ -4,11 +4,11 @@ import { useEffect, useState } from 'react'
 
 import styled from '@emotion/styled'
 
-import ContractAddressJSON from "../contracts/sepolia/contract-address.json";
-import USDCABI from "../contracts/sepolia/ERC20UpgradeableABI.json";
-import MarketplaceJSON from "../contracts/sepolia/TomaasMarketplace.json";
-import TomaasLPNJSON from "../contracts/sepolia/TomaasLPN.json";
-import TomaasRWNJSON from "../contracts/sepolia/TomaasRWN.json";
+import ContractAddressJSON from "../contracts/polygon/contract-address.json";
+import USDCABI from "../contracts/polygon/ERC20UpgradeableABI.json";
+import MarketplaceJSON from "../contracts/polygon/TomaasMarketplace.json";
+import TomaasLPNJSON from "../contracts/polygon/TomaasLPN.json";
+import TomaasRWNJSON from "../contracts/polygon/TomaasRWN.json";
 
 //Modal Window Backgrounds
 export const SearchModalBox = styled.div`

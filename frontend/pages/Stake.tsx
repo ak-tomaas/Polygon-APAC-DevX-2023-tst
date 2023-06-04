@@ -7,11 +7,11 @@ import Link from 'next/link';
 import { Network, Alchemy } from "alchemy-sdk";
 import { ethers } from "ethers";
 
-import ContractAddressJSON from "../contracts/sepolia/contract-address.json";
-import USDCABI from "../contracts/sepolia/ERC20UpgradeableABI.json";
-import TomaasRWNJSON from "../contracts/sepolia/TomaasRWN.json";
-import TomaasLPNJSON from "../contracts/sepolia/TomaasLPN.json";
-import StakingJSON from "../contracts/sepolia/TomaasStaking.json";
+import ContractAddressJSON from "../contracts/polygon/contract-address.json";
+import USDCABI from "../contracts/polygon/ERC20UpgradeableABI.json";
+import TomaasRWNJSON from "../contracts/polygon/TomaasRWN.json";
+import TomaasLPNJSON from "../contracts/polygon/TomaasLPN.json";
+import StakingJSON from "../contracts/polygon/TomaasStaking.json";
 
 import Navbar from '../components/navbar';
 import Hero from '../components/hero';
@@ -20,7 +20,7 @@ import Footer from '../components/footer';
 
 const settings = {
   apiKey: "mjigLH16AH2bdolh5gDPf-Ef5SCemJJx",
-  network: Network.ETH_SEPOLIA,
+  network: Network.MATIC_MAINNET,
 };
 
 const alchemy = new Alchemy(settings);
