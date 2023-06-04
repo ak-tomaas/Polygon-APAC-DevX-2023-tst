@@ -81,6 +81,7 @@ contract TomaasStaking is
     event StakeTLNs(address indexed tlnAddr, address indexed staker, uint256[] tokenIds);
     event UnstakeTLNs(address indexed tlnAddr, address indexed staker, uint256 tokenId);
     event Claim(address indexed tlnAddr, address indexed staker, uint256 amount);
+    event SetPriceOfTRN(address indexed trnAddr, uint256 price);
 
     constructor() {
     }
@@ -161,6 +162,8 @@ contract TomaasStaking is
     function setPriceOfTRN(address trnAddr, uint256 price) public onlyOwner {
         require(_existTRN(trnAddr), "TS: TRN not exist");
         _priceOfTRN[trnAddr] = price;
+
+        emit SetPriceOfTRN(trnAddr, price);
     }
 
     /**
