@@ -7,20 +7,27 @@ import { Network, Alchemy } from "alchemy-sdk";
 import { ethers } from "ethers";
 import { Client, cacheExchange, fetchExchange } from 'urql';
 
-import ContractAddressJSON from "../contracts/polygon/contract-address.json";
-import USDCABI from "../contracts/polygon/ERC20UpgradeableABI.json";
-import LendingJSON from "../contracts/polygon/TomaasLending.json";
-import TomaasRWNJSON from "../contracts/polygon/TomaasRWN.json";
-
+import { ERC20MockJSON, ContractAddressJSON, LendingJSON, TRNJSON } from '../contracts/loadContracts';
 import Navbar from '../components/navbar';
 import SectionTitle from '../components/sectionTitle';
 import Footer from '../components/footer';
 
-const settings = {
-  apiKey: process.env.ALCHEMY_POLYGON_API_KEY,
-  network: Network.MATIC_MAINNET,
-};
+let alchemy_network:Network = Network.ETH_MAINNET;
 
+if (process.env.REACT_APP_NETWORK === "polygon") {
+  alchemy_network = Network.MATIC_MAINNET;
+}
+else if (process.env.REACT_APP_NETWORK === "sepolia") {
+  alchemy_network = Network.ETH_SEPOLIA;
+}
+else if (process.env.REACT_APP_NETWORK === "arbitrumGoerli") {
+  alchemy_network = Network.ARB_GOERLI;
+}
+
+const settings = {
+  apiKey: process.env.REACT_APP_ALCHEMY_API_KEY,
+  network: alchemy_network,
+};
 const alchemy = new Alchemy(settings);
 
 const APIURL = 'https://api.studio.thegraph.com/query/47855/ethseoul-2023-subgraph/version/latest'
@@ -55,10 +62,6 @@ export async function getServerSideProps() {
 const Lend: NextPage = ({ data } : any) => {
 
   const [trnContract, setTrnContract] = useState<ethers.Contract | null>(null);
-  // const [lendingContract, setLendingContract] = useState<ethers.Contract | null>(null);
-  // const [usdcContract, setUsdcContract] = useState<ethers.Contract | null>(null);
-
-  // const [decimals, setDecimals] = useState(0);
   const [walletAddr, setWalletAddr] = useState("0x");
 
   const [amountOfRented, setAmountOfRented] = useState(0);
@@ -73,7 +76,7 @@ const Lend: NextPage = ({ data } : any) => {
     try {
       trnContract = new ethers.Contract(
         ContractAddressJSON.TomaasRWN,
-        TomaasRWNJSON.abi,
+        TRNJSON.abi,
         signer);
       setTrnContract(trnContract);
     }
@@ -96,7 +99,8 @@ const Lend: NextPage = ({ data } : any) => {
     }
 
     let amountOfRented = 0;
-    let ownedNFTs = await alchemy.nft.getNftsForOwner(addr, {contractAddresses:[ContractAddressJSON.TomaasRWN]});
+    let ownedNFTs = await alchemy.nft.getNftsForOwner(addr, 
+                            {contractAddresses:[ContractAddressJSON.TomaasRWN]});
 
     console.log("ownedNFTs : ", ownedNFTs);
     let countOfOwnedNFTs = ownedNFTs.totalCount;
@@ -166,7 +170,7 @@ const Lend: NextPage = ({ data } : any) => {
 
     console.log("loading contract");
 
-    let usdcContract = new ethers.Contract(ContractAddressJSON.USDC, USDCABI, signer);
+    let usdcContract = new ethers.Contract(ContractAddressJSON.USDC, ERC20MockJSON.abi, signer);
     // setUsdcContract(usdcContract);
 
     let usdcDecimals = await usdcContract.decimals();
@@ -187,7 +191,19 @@ const Lend: NextPage = ({ data } : any) => {
       console.log("trnContract is null");
       return;
     }
-    await trnContract.claimEarningsAllRented();
+    try {
+      let tx = await trnContract.claimEarningsAllRented();
+      tx.wait().then((receipt: any) => {
+        console.log("ClaimEarningsAllRented receipt : ", receipt);
+      }).catch((err: any) => {
+        console.log("ClaimEarningsAllRented err : ", err);
+      }).finally(() => {
+        console.log("ClaimEarningsAllRented finally");
+      });
+    }
+    catch(err) {
+      console.log("doClaim error : ", err);
+    }
   }
 
   async function _fetchData() {

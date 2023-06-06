@@ -1,14 +1,11 @@
 
 import { ethers } from 'ethers';
 import { useEffect, useState } from 'react'
+import 'dotenv/config'
 
 import styled from '@emotion/styled'
 
-import ContractAddressJSON from "../contracts/polygon/contract-address.json";
-import USDCABI from "../contracts/polygon/ERC20UpgradeableABI.json";
-import MarketplaceJSON from "../contracts/polygon/TomaasMarketplace.json";
-import TomaasLPNJSON from "../contracts/polygon/TomaasLPN.json";
-import TomaasRWNJSON from "../contracts/polygon/TomaasRWN.json";
+import { ERC20MockJSON, ContractAddressJSON, TLNJSON, LendingJSON, MarketplaceJSON } from '../contracts/loadContracts';
 
 //Modal Window Backgrounds
 export const SearchModalBox = styled.div`
@@ -172,13 +169,20 @@ const BuyNFTModal = (props:any) => {
       } else {
         address = ContractAddressJSON.TomaasLPN;
       }
+
       if (usdcContract) {
-        console.log("usdcContract.approve : ", totalPrice);
-        usdcContract.approve(address, totalPrice);
+        console.log("usdcContract.approve : ", totalPrice.toString());
         clickNotification(true, {title: "Approving", description: "Please wait for a while."});
         clickModal();
-        usdcContract.on('Approval', (owner, spender, value, event) => {
-          console.log('Approval event:', event);
+        const tx = await usdcContract.approve(address, totalPrice);
+
+        tx.wait().then((receipt: any) => {
+          console.log("usdcContract.wait receipt : ", receipt);
+        }
+        ).catch((err: any) => {
+          console.log("usdcContract.wait error : ", err);
+          // alert("usdcContract.approve error : " + err);
+        }).finally(() => {
           clickNotification(false);
           checkApproval();
         });
@@ -186,7 +190,8 @@ const BuyNFTModal = (props:any) => {
     }
     catch (err) {
       console.log("usdcContract.approve error : ", err);
-      alert("usdcContract.approve error : " + err);
+      clickNotification(false);
+      // alert("usdcContract.approve error : " + err);
       return;
     }
   }
@@ -217,17 +222,21 @@ const BuyNFTModal = (props:any) => {
 
     try {
       console.log("buyMultipleNFT : trnAddr: ", trnAddr, " prices:",  prices, "tokenIds:", tokenIds);
-      marketplaceContract?.buyMultipleNFT(trnAddr, prices, tokenIds);
       clickNotification(true, {title: "Buying", description: "Please wait for a while."});
+      const tx = await marketplaceContract?.buyMultipleNFT(trnAddr, prices, tokenIds);
       clickModal();
-      marketplaceContract?.once('NFTsBought', (buyer, trnAddr, prices, tokenIds, event) => {
-        console.log('NFTsBought event:', event);
+      tx.wait().then((receipt: any) => {
+        console.log("buyMultipleNFT.wait receipt : ", receipt);
+      }).catch((err: any) => {
+        console.log("buyMultipleNFT.wait error : ", err);
+      }).finally(() => {
+        checkApproval();
         clickNotification(false);
       });
     }
     catch (err) {
       console.log("marketplaceContract.buyMultipleNFT error : ", err);
-      alert("marketplaceContract.buyMultipleNFT error : " + err);
+      clickNotification(false);
       return;
     }
   }
@@ -241,26 +250,22 @@ const BuyNFTModal = (props:any) => {
     tokenUri = items[0].listing[0].tokenUri;
 
     try {
-      tlnContract?.safeMintMultiple(walletAddr, tokenUri, count)
-        .then((result: any) => {
-            console.log("tlnContract.mintMultiple : ", result); 
-        })
-        .catch((err: any) => {
-            console.log("tlnContract.mintMultiple catch error : ", err);
-            return;
-        });
-
       clickNotification(true, {title: "Minting", description: "Please wait for a while."});
+      let tx = await tlnContract?.safeMintMultiple(walletAddr, tokenUri, count);
       clickModal();
-      tlnContract?.once('Transfer', (owner, spender, value, event) => {
-          console.log('Transfer event:', event);
-          checkApproval();
-          clickNotification(false);
-        });
+      tx.wait().then((receipt: any) => {
+        console.log("MintMultiple.wait receipt : ", receipt);
+      }).catch((err: any) => {
+        console.log("MintMultiple.wait error : ", err);
+      }).finally(() => {
+        checkApproval();
+        clickNotification(false);
+      });
     }
     catch (err) {
-      console.log("tlnContract.mintMultiple error : ", err);
-      alert("tlnContract.mintMultiple error : " + err);
+      console.log("MintMultiple error : ", err);
+      clickNotification(false);
+      // alert("tlnContract.mintMultiple error : " + err);
       return;
     }
   }
@@ -335,7 +340,7 @@ const BuyNFTModal = (props:any) => {
 
     console.log("addr : ", addr);
 
-    let usdcContract = new ethers.Contract(ContractAddressJSON.USDC, USDCABI, signer);
+    let usdcContract = new ethers.Contract(ContractAddressJSON.USDC, ERC20MockJSON.abi, signer);
     setUsdcContract(usdcContract);
 
     let usdcDecimals = await usdcContract.decimals();
@@ -344,13 +349,13 @@ const BuyNFTModal = (props:any) => {
 
     // let trnContract = new ethers.Contract(
     //                                     ContractAddressJSON.TomaasRWN,
-    //                                     TomaasRWNJSON.abi,
+    //                                     TRNJSON.abi,
     //                                     signer);
     // setTrnContract(trnContract);
 
     let tlnContract = new ethers.Contract(
                                         ContractAddressJSON.TomaasLPN,
-                                        TomaasLPNJSON.abi,
+                                        TLNJSON.abi,
                                         signer);
 
     setTlnContract(tlnContract);

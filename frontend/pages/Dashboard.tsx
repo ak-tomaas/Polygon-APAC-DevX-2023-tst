@@ -9,18 +9,24 @@ import SectionTitle from '../components/sectionTitle';
 import Footer from '../components/footer';
 import Container from "../components/container";
 
-import ContractAddressJSON from "../contracts/polygon/contract-address.json";
-import ERC20Mock from "../contracts/polygon/ERC20Mock.json";
-import TomaasRWNJSON from "../contracts/polygon/TomaasRWN.json";
-import TomaasLPNJSON from "../contracts/polygon/TomaasLPN.json";
-import StakingJSON from "../contracts/polygon/TomaasStaking.json";
+import { ERC20MockJSON, ContractAddressJSON, TLNJSON, TRNJSON, StakingJSON } from '../contracts/loadContracts';
 
 import { useEffect, useState } from 'react';
 
 const settings = {
-  apiKey: process.env.ALCHEMY_POLYGON_API_KEY,
-  network: Network.MATIC_MAINNET,
+  apiKey: process.env.ALCHEMY_API_KEY,
+  network: Network.ETH_MAINNET
 };
+
+if (process.env.NETWORK === "polygon") {
+  settings.network = Network.MATIC_MAINNET;
+}
+else if (process.env.NETWORK === "sepolia") {
+  settings.network = Network.ETH_SEPOLIA;
+}
+else if (process.env.NETWORK === "arbitrumGoerli") {
+  settings.network = Network.ARB_GOERLI;
+}
 
 const alchemy = new Alchemy(settings);
 
@@ -42,7 +48,7 @@ const Dashboard: NextPage = () => {
     try {
       trnContract = new ethers.Contract(
         ContractAddressJSON.TomaasRWN,
-        TomaasRWNJSON.abi,
+        TRNJSON.abi,
         signer);
     }
     catch(err) {
@@ -85,7 +91,7 @@ const Dashboard: NextPage = () => {
     try {
       tlnContract = new ethers.Contract(
         ContractAddressJSON.TomaasLPN,
-        TomaasLPNJSON.abi,
+        TLNJSON.abi,
         signer);
     }
     catch(err) {
@@ -212,7 +218,7 @@ const Dashboard: NextPage = () => {
     let usdcDecimals = 0;
 
     try {
-      usdcContract = new ethers.Contract(ContractAddressJSON.USDC, ERC20Mock.abi, signer);
+      usdcContract = new ethers.Contract(ContractAddressJSON.USDC, ERC20MockJSON.abi, signer);
       setUSDCContract(usdcContract);
       usdcDecimals = await usdcContract.decimals();
       console.log("usdcDecimals : ", usdcDecimals.toString());

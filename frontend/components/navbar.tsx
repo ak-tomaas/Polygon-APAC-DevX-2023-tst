@@ -39,19 +39,34 @@ const Navbar = () => {
   }
 
   async function connectWebsite() {
-    const chainId = await window.ethereum.request({ method: 'eth_chainId' });
-    console.log(chainId);
-    // Sepolia Network ID
-    //const sepoliaChainId = '0xA869';
-    const sepoliaChainId = '0xaa36a7';
-    // Goerli Network ID
-    const goerliChainId = '0x5';
+    const walletChainId = await window.ethereum.request({ method: 'eth_chainId' });
+    console.log("walletChainId : ", walletChainId);
 
-    if (chainId !== sepoliaChainId) {
+    const sepoliaChainId = '0xaa36a7';
+    const polygonChainId = '0x89';
+    const arbitrumGoerliChainId = '0x66EED';
+    const arbitrumOneChainId = '0xa4b1';
+
+    let chainId;
+    if (process.env.REACT_APP_NETWORK === "sepolia") {
+      chainId = sepoliaChainId;
+    }
+    else if (process.env.REACT_APP_NETWORK === "arbitrumGoerli") {
+      chainId = arbitrumGoerliChainId;
+    }
+    else if (process.env.REACT_APP_NETWORK === "polygon") {
+      chainId = polygonChainId;
+    }
+    else if (process.env.REACT_APP_NETWORK === "arbitrumOne") {
+      chainId = arbitrumOneChainId;
+    }
+    console.log("Site ChainId : ", chainId);
+
+    if (chainId !== walletChainId) {
       //alert('Incorrect network! Switch your metamask network to sepolia');
       await window.ethereum.request({
         method: 'wallet_switchEthereumChain',
-        params: [{ chainId: sepoliaChainId }],
+        params: [{ chainId: chainId }],
       })
     }
 

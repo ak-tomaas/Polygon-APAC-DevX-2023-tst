@@ -7,11 +7,7 @@ import Link from 'next/link';
 import { Network, Alchemy } from "alchemy-sdk";
 import { ethers } from "ethers";
 
-import ContractAddressJSON from "../contracts/polygon/contract-address.json";
-import USDCABI from "../contracts/polygon/ERC20UpgradeableABI.json";
-import TomaasRWNJSON from "../contracts/polygon/TomaasRWN.json";
-import TomaasLPNJSON from "../contracts/polygon/TomaasLPN.json";
-import StakingJSON from "../contracts/polygon/TomaasStaking.json";
+import { ERC20MockJSON, ContractAddressJSON, TLNJSON, StakingJSON } from '../contracts/loadContracts';
 
 import Navbar from '../components/navbar';
 import Hero from '../components/hero';
@@ -19,9 +15,19 @@ import SectionTitle from '../components/sectionTitle';
 import Footer from '../components/footer';
 
 const settings = {
-  apiKey: "mjigLH16AH2bdolh5gDPf-Ef5SCemJJx",
-  network: Network.MATIC_MAINNET,
+  apiKey: process.env.ALCHEMY_POLYGON_API_KEY,
+  network: Network.ETH_MAINNET,
 };
+
+if (process.env.NETWORK === "polygon") {
+  settings.network = Network.MATIC_MAINNET;
+}
+else if (process.env.NETWORK === "sepolia") {
+  settings.network = Network.ETH_SEPOLIA;
+}
+else if (process.env.NETWORK === "arbitrumGoerli") {
+  settings.network = Network.ARB_GOERLI;
+}
 
 const alchemy = new Alchemy(settings);
 
@@ -51,7 +57,7 @@ const Stake: NextPage = ({ data } : any) => {
     try {
       tlnContract = new ethers.Contract(
         ContractAddressJSON.TomaasLPN,
-        TomaasLPNJSON.abi,
+        TLNJSON.abi,
         signer);
     }
     catch(err) {
@@ -70,7 +76,8 @@ const Stake: NextPage = ({ data } : any) => {
       console.log("getAddress error : ", e);
       return;
     }
-    let ownedNFTs = await alchemy.nft.getNftsForOwner(addr, {contractAddresses:[ContractAddressJSON.TomaasLPN]});
+    let ownedNFTs = await alchemy.nft.getNftsForOwner(addr, 
+                            {contractAddresses:[ContractAddressJSON.TomaasLPN]});
     let countOfOwnedNFTs = ownedNFTs.totalCount;
     console.log("countOf ", countOfOwnedNFTs ,"ownedNFTs : ", ownedNFTs);
     setCountOfOwnedNFTs(countOfOwnedNFTs);
@@ -162,7 +169,7 @@ const Stake: NextPage = ({ data } : any) => {
 
     console.log("loading contract");
 
-    let usdcContract = new ethers.Contract(ContractAddressJSON.USDC, USDCABI, signer);
+    let usdcContract = new ethers.Contract(ContractAddressJSON.USDC, ERC20MockJSON.abi, signer);
 
     let usdcDecimals = await usdcContract.decimals();
     console.log("usdcDecimals : ", usdcDecimals.toString());

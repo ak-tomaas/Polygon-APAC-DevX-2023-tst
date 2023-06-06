@@ -5,22 +5,28 @@ import Head from 'next/head'
 import { Network, Alchemy } from "alchemy-sdk";
 import { ethers } from "ethers";
 
-import LendingJSON from "../contracts/polygon/TomaasLending.json";
-import TRNJSON from "../contracts/polygon/TomaasLPN.json";
-import USDCABI from "../contracts/polygon/ERC20UpgradeableABI.json";
-import MarketplaceJSON from "../contracts/polygon/TomaasMarketplace.json";
-import ContractAddressJSON from "../contracts/polygon/contract-address.json";
-
+import { ERC20MockJSON, ContractAddressJSON, TLNJSON, LendingJSON, MarketplaceJSON } from '../contracts/loadContracts';
 import Navbar from '../components/navbar';
 import SectionTitle from '../components/sectionTitle';
 import Footer from '../components/footer';
 import DescriptionCard from '../components/descriptionCard';
 
-const settings = {
-  apiKey: process.env.ALCHEMY_POLYGON_API_KEY,
-  network: Network.MATIC_MAINNET,
-};
+let alchemy_network:Network = Network.ETH_MAINNET;
 
+if (process.env.REACT_APP_NETWORK === "polygon") {
+  alchemy_network = Network.MATIC_MAINNET;
+}
+else if (process.env.REACT_APP_NETWORK === "sepolia") {
+  alchemy_network = Network.ETH_SEPOLIA;
+}
+else if (process.env.REACT_APP_NETWORK === "arbitrumGoerli") {
+  alchemy_network = Network.ARB_GOERLI;
+}
+
+const settings = {
+  apiKey: process.env.REACT_APP_ALCHEMY_API_KEY,
+  network: alchemy_network,
+};
 const alchemy = new Alchemy(settings);
 
 export async function getServerSideProps() {
@@ -90,9 +96,15 @@ const Buy: NextPage = ({ data } : any) => {
       listing: [] as SaleInfoNFT[]
     };
 
-    let tlnContract = new ethers.Contract(ContractAddressJSON.TomaasLPN, TRNJSON.abi, signer);
-    let tokenUri = await tlnContract.tokenURI(4);
-    console.log("tokenUri : ", tokenUri);
+    let tokenUri;
+    try {
+      let tlnContract = new ethers.Contract(ContractAddressJSON.TomaasLPN, TLNJSON.abi, signer);
+      tokenUri = await tlnContract.tokenURI(4);
+      console.log("tokenUri : ", tokenUri);
+    }
+    catch(err) {
+      console.log("tokenUri err : ", err);
+    }
 
     let tlnMetadata = await alchemy.nft.getNftMetadata(ContractAddressJSON.TomaasLPN, "4");
 
@@ -222,8 +234,15 @@ const Buy: NextPage = ({ data } : any) => {
 
     console.log("loading contract");
 
-    let usdcContract = new ethers.Contract(ContractAddressJSON.USDC, USDCABI, signer);
-    usdc_decimals = await usdcContract.decimals();
+    try {
+      console.log("UDSC addr : ", ContractAddressJSON.USDC);
+      console.log("UDSC abi : ", ERC20MockJSON.abi);
+      let usdcContract = new ethers.Contract(ContractAddressJSON.USDC, ERC20MockJSON.abi, signer);
+      usdc_decimals = await usdcContract.decimals();
+    }
+    catch (err) {
+      console.log(err);
+    }
 
     makeListingTRN(signer);
     makeListingTLN(signer);
