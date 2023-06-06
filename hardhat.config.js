@@ -33,9 +33,26 @@ module.exports = {
         process.env.SERVICE_PROVIDER_PRIVATE_KEY,
       ],
     },
-    polygon_mumbai: {
+    polygonMumbai: {
       url: "https://rpc-mumbai.maticvigil.com",
       chainid: 80001,
+      accounts: [
+        process.env.DEPLOYER_PRIVATE_KEY,
+        process.env.VEHICLE_OWNER_PRIVATE_KEY,
+        process.env.SERVICE_PROVIDER_PRIVATE_KEY,
+      ],
+    },
+    arbitrumGoerli: {
+      url: process.env.ALCHEMY_ARBITRUM_GOERLI_API_URL,
+      chainId: 421613,
+      accounts: [
+        process.env.DEPLOYER_PRIVATE_KEY,
+        process.env.VEHICLE_OWNER_PRIVATE_KEY,
+        process.env.SERVICE_PROVIDER_PRIVATE_KEY,
+      ],
+    },
+    arbitrumOne: {
+      url: "https://arb1.arbitrum.io/rpc",
       accounts: [
         process.env.DEPLOYER_PRIVATE_KEY,
         process.env.VEHICLE_OWNER_PRIVATE_KEY,

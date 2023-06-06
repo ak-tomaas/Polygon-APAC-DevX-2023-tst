@@ -29,20 +29,13 @@ let USDC_300;
 let USDC_770;
 let USDC_100K;
 
-async function waitForEvent(contract, eventString) {
-  const eventDetails = await new Promise((resolve, reject) => {
-    contract.once(eventString, (detail1, detail2, event) => { // replace `detail1, detail2` with the actual parameters that your event emits
-      try {
-        // You can add any additional processing here
-        // console.log(`Block number: ${event.blockNumber}, Detail 1: ${detail1}, Detail 2: ${detail2}`);
-        resolve({ detail1, detail2, event });
-      } catch (error) {
-        reject(error);
-      }
-    });
-  });
-
-  console.log(`${eventString} Event caught. Block number: ${eventDetails.event.blockNumber}, Detail 1: ${eventDetails.detail1}, Detail 2: ${eventDetails.detail2}`);
+async function waitAndLog(name, tx) {
+  let receipt = await tx.wait();
+  console.log(name, 
+              " receipt status: ", receipt?.status, 
+              " receipt gasUsed: ", receipt?.gasUsed.toString(),
+              " events: ", receipt?.events.length>0?receipt?.events[0].event:null);
+  return receipt;
 }
 
 async function main() {
@@ -55,6 +48,7 @@ async function main() {
   }
 
   const [deployer, vehicleOwner, serviceProvider] = await ethers.getSigners();
+  let tx;
 
   console.log(
     "Deploying the contracts with the account:",
@@ -83,14 +77,11 @@ async function main() {
   USDC_770 = ethers.utils.parseUnits("770", decimals);
   USDC_100K = ethers.utils.parseUnits("100000", decimals);
 
-  await usdc.mint(deployer.address, USDC_100K);
-  console.log("USDC minted");
+  tx = await usdc.mint(deployer.address, USDC_100K);
+  await waitAndLog("USDC mint", tx); 
 
   const TomaasRWN = await hre.ethers.getContractFactory("TomaasRWN");
-
-  console.log("TomaasRWN");
   const COLLECTION_NAME_1 = "TRN FLO #1";
-
   const trnFlo1 = await TomaasRWN.deploy(COLLECTION_NAME_1, 
                                 usdc.address, 
                                 FLO_SSD, 
@@ -98,43 +89,41 @@ async function main() {
                                 USDC_770);
   console.log("ToomasRWN deploying...");
   await trnFlo1.deployed();
-  console.log("TRN FLO #1 address:", trnFlo1.address);
+  console.log("Deployed TRN FLO #1 address:", trnFlo1.address);
 
   for (let i = 0; i < TRN_MINT_AMOUNT; i++) {
-    trnFlo1.safeMintMultipleAndSetUser(voAddress,
+    let tx = await trnFlo1.safeMintMultipleAndSetUser(voAddress,
       TRN_METADATA_URL,
       QUANTITY_AT_ONCE,
       spAddress,
       FLO_RENTAL_EXPIRE);
-    await waitForEvent(trnFlo1, "UpdateUsers");
-    console.log("TRN FLO #1 supply:", (await trnFlo1.totalSupply()).toString());
+    await waitAndLog("TRN SafeMintMultipleAndSetUser", tx);
   }
 
+  console.log("ToomasLending deploying...");
   const TomaasLending = await hre.ethers.getContractFactory("TomaasLending");
   const tomaasLending = await TomaasLending.deploy();
   await tomaasLending.deployed();
   console.log("TomaasLending address:", tomaasLending.address);
 
-  trnFlo1.transferOwnership(tomaasLending.address);
-  await waitForEvent(trnFlo1, "OwnershipTransferred");
-  console.log("TRN FLO #1 ownership transferred to TomaasLending");
+  tx = await trnFlo1.transferOwnership(tomaasLending.address);
+  await waitAndLog("TRN transferOwnership", tx);
  
-  tomaasLending.addCollection(trnFlo1.address, FLO_REVENEUE_SHARE_RATIO);
-  await waitForEvent(tomaasLending, "AddNewCollection");
-  console.log("TRN FLO #1 added to TomaasLending");
+  tx = await tomaasLending.addCollection(trnFlo1.address, FLO_REVENEUE_SHARE_RATIO);
+  await waitAndLog("Lending addCollection", tx);
   
-  tomaasLending.registerRenter(trnFlo1.address, spAddress);
-  await waitForEvent(tomaasLending, "RenterRegistered");
-  console.log("TRN FLO #1 registered to TomaasLending");
+  tx = await tomaasLending.registerRenter(trnFlo1.address, spAddress);
+  await waitAndLog("Lending registerRenter", tx);
 
+  console.log("ToomasMarketplace deploying...");
   const TomaasMarketplace = await hre.ethers.getContractFactory("TomaasMarketplace");
   const tomaasMarketplace = await TomaasMarketplace.deploy(tomaasLending.address);
   await tomaasMarketplace.deployed();
   console.log("TomaasMarketplace address:", tomaasMarketplace.address);
 
   //set approval for all
-  trnFlo1.connect(vehicleOwner).setApprovalForAll(tomaasMarketplace.address, true);
-  await waitForEvent(trnFlo1, "ApprovalForAll");
+  tx = await trnFlo1.connect(vehicleOwner).setApprovalForAll(tomaasMarketplace.address, true);
+  await waitAndLog("TRN setApprovalForAll", tx);
 
   // add sales info of 400 TRNs to marketplace
   for (let i=0; i<TRN_FOR_SALES;i++) {
@@ -142,73 +131,75 @@ async function main() {
     for (let j=0; j<QUANTITY_AT_ONCE; j++) {
       tokenIds.push(i*QUANTITY_AT_ONCE+j);
     }
-    tomaasMarketplace.connect(vehicleOwner).listingMultipleForSale(trnFlo1.address, USDC_300, tokenIds);
-    await waitForEvent(tomaasMarketplace, "NFTsListedForSale");
-    console.log("TRN FLO #1 saleInfos:", (await tomaasMarketplace.getListedNFTs(trnFlo1.address)).length);
+    tx = await tomaasMarketplace.connect(vehicleOwner).
+                                  listingMultipleForSale(trnFlo1.address, USDC_300, tokenIds);
+    await waitAndLog("Marketplace listingMultipleForSale", tx);
+    console.log("VehicleOnwer's TRN saleInfos:", (
+      await tomaasMarketplace.getListedNFTs(trnFlo1.address)).length);
   }
 
-  let saleInfos = await tomaasMarketplace.getListedNFTs(trnFlo1.address);
-  console.log("saleInfos of marketplace: ", saleInfos.length);
-
+  console.log("ToomasLPN deploying...");
   const TomaasLPN = await hre.ethers.getContractFactory("TomaasLPN");
   const tomaasLPN = await TomaasLPN.deploy(usdc.address, USDC_100);
   await tomaasLPN.deployed();
   console.log("Tomaas LPN address:", tomaasLPN.address);
 
-  usdc.approve(tomaasLPN.address, USDC_100.mul(10));
-  await waitForEvent(usdc, "Approval");
-  console.log("USDC approved for LPN :", (await usdc.allowance(deployer.address, tomaasLPN.address)).toString());
+  tx = await usdc.approve(tomaasLPN.address, USDC_100.mul(10));
+  await waitAndLog("USDC approve", tx);
+  console.log("USDC approved for LPN :", 
+                  (await usdc.allowance(deployer.address, tomaasLPN.address)).toString());
 
-  tomaasLPN.safeMintMultiple(deployer.address, TLN_METADATA_URL, 10);
-  await waitForEvent(tomaasLPN, "Transfer");
+  tx = await tomaasLPN.safeMintMultiple(deployer.address, TLN_METADATA_URL, 10);
+  await waitAndLog("LPN safeMintMultiple", tx);
   console.log("Tomaas LPN supply:", (await tomaasLPN.totalSupply()).toString());
 
+  console.log("ToomasStaking deploying...");
   const TomaasSP = await hre.ethers.getContractFactory("TomaasStaking");
   const tomaasStaking = await TomaasSP.deploy(); 
   await tomaasStaking.deployed();
   console.log("Tomaas Staking address:", tomaasStaking.address);
 
-  tomaasStaking.connect(deployer).addTRNAddress(trnFlo1.address, usdc.address, FLO_REVENEUE_SHARE_RATIO);
-  await waitForEvent(tomaasStaking, "AddTRNAddress");
-  console.log("Tomaas Staking add TRN Address");
+  tx = await tomaasStaking.connect(deployer).
+                          addTRNAddress(trnFlo1.address, usdc.address, FLO_REVENEUE_SHARE_RATIO);
+  await waitAndLog("Staking add TRN Address", tx);
 
   let rates = [100, 500, 550, 600, 700, 800, 950, 1100, 1300, 1500, 1800];
   let estimatedGas = await tomaasStaking.estimateGas.addTLNAddress(tomaasLPN.address, usdc.address, USDC_100, rates);
   console.log("estimated gas: ", estimatedGas.toString());
-  tomaasStaking.connect(deployer).addTLNAddress(tomaasLPN.address, usdc.address, USDC_100, rates);
-  await waitForEvent(tomaasStaking, "AddTLNAddress");
-  console.log("Tomaas Staking add TLN Address");
+  tx = await tomaasStaking.connect(deployer).addTLNAddress(tomaasLPN.address, usdc.address, USDC_100, rates);
+  await waitAndLog("Staking add TLN Address", tx);
 
-  await tomaasLPN.connect(deployer).addToWL(tomaasStaking.address);
-  console.log("Tomass LPN add staking address to white list");
+  tx = await tomaasLPN.connect(deployer).addToWL(tomaasStaking.address);
+  await waitAndLog("LPN add to WL", tx);
 
-  tomaasStaking.connect(deployer).setPriceOfTRN(trnFlo1.address, USDC_300);
-  await waitForEvent(tomaasStaking, "SetPriceOfTRN");
-  console.log("tomass LPN set price of TRN ");
+  tx = await tomaasStaking.connect(deployer).setPriceOfTRN(trnFlo1.address, USDC_300);
+  await waitAndLog("Staking setPriceOfTRN", tx);
 
-  trnFlo1.connect(vehicleOwner).setApprovalForAll(tomaasStaking.address, true);
-  await waitForEvent(trnFlo1, "ApprovalForAll");
+  tx = await trnFlo1.connect(vehicleOwner).setApprovalForAll(tomaasStaking.address, true);
+  await waitAndLog("Vehicle Owner's TRN setApprovalForAll", tx);
 
+  console.log("listing TRNs for sale to pool");
   for (let i = TRN_FOR_SALES; i < TRN_FOR_SALES+TRN_SELL_TO_POOL; i++) {
     let tokenIds = [];
     for (let j = 0; j < QUANTITY_AT_ONCE; j++) {
       tokenIds.push(i * QUANTITY_AT_ONCE + j);
     }
-    tomaasStaking.connect(vehicleOwner).sellTRNsToPool(trnFlo1.address, tokenIds);
-    await waitForEvent(tomaasStaking, "SellTRNsToPool");
+    tx = await tomaasStaking.connect(vehicleOwner).sellTRNsToPool(trnFlo1.address, tokenIds);
+    await waitAndLog("Staking SellTRNsToPool", tx);
 
     let lengthToPurchase = await tomaasStaking.connect(vehicleOwner).
                                 lengthOfTRNsToPurchase(trnFlo1.address);
-    console.log("length of TRNs to purchase: ", 
+    console.log("Staking LengthOfTRNsToPurchase: ", 
                                 lengthToPurchase.toString());
   }
 
-  tomaasLPN.connect(deployer).setApprovalForAll(tomaasStaking.address, true);
-  await waitForEvent(tomaasLPN, "ApprovalForAll");
+  tx = await tomaasLPN.connect(deployer).setApprovalForAll(tomaasStaking.address, true);
+  await waitAndLog("LPN setApprovalForAll", tx);
 
   //stake 4 TRNs of 10 TRNs 
-  let tokenIds = [0, 1, 2, 3]
-  await tomaasStaking.connect(deployer).stakeTLNs(tomaasLPN.address, tokenIds);
+  let tokenIds = [0, 1, 2, 3];
+  tx = await tomaasStaking.connect(deployer).stakeTLNs(tomaasLPN.address, tokenIds);
+  await waitAndLog("Staking StakeTLNs", tx);
   let totalStaked = await tomaasStaking.connect(deployer).totalStakedTokens();
   console.log("total staked tokens: ", totalStaked.toString());
 
@@ -233,6 +224,12 @@ function saveFrontendFiles(usdc, tomaasRWN, tomaasLending, tomaasMarketplace, to
       TomaasLPN: tomaasLPN.address,
       TomaasStaking: tomaasSP.address
     }, undefined, 2));
+
+  const ERC20MockArtifact = artifacts.readArtifactSync("ERC20Mock");
+  fs.writeFileSync(
+    path.join(contractsDir, "ERC20Mock.json"),
+    JSON.stringify(ERC20MockArtifact, null, 2)
+  );
 
   const TomaasNFArtifact = artifacts.readArtifactSync("TomaasRWN");
   fs.writeFileSync(
